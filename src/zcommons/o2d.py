@@ -1,4 +1,8 @@
-import copy
+__all__ = [
+    "asdict",
+    "asobj"
+]
+
 import dataclasses
 import typing
 
@@ -99,35 +103,3 @@ def asobj(_cls, d):
 
 def _is_typing_container(_cls):
     return isinstance(_cls, typing.GenericMeta) and _cls.__dict__["__extra__"] in _BUILTIN_CONTAIN_TYPES
-
-"""
-    # It's an error to have init=False fields in 'changes'.
-    # If a field is not in 'changes', read its value from the provided obj.
-
-    for f in getattr(obj, _FIELDS).values():
-        # Only consider normal fields or InitVars.
-        if f._field_type is _FIELD_CLASSVAR:
-            continue
-
-        if not f.init:
-            # Error if this field is specified in changes.
-            if f.name in changes:
-                raise ValueError(f'field {f.name} is declared with '
-                                 'init=False, it cannot be specified with '
-                                 'replace()')
-            continue
-
-        if f.name not in changes:
-            if f._field_type is _FIELD_INITVAR:
-                raise ValueError(f"InitVar {f.name!r} "
-                                 'must be specified with replace()')
-            changes[f.name] = getattr(obj, f.name)
-
-    # Create the new object, which calls __init__() and
-    # __post_init__() (if defined), using all of the init fields we've
-    # added and/or left in 'changes'.  If there are values supplied in
-    # changes that aren't fields, this will correctly raise a
-    # TypeError.
-    return obj.__class__(**changes)
-
-"""
