@@ -47,6 +47,15 @@ def force_site_package():
     importlib.reload(zcommons)
 
 
+def chdir():
+    import os
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(root_dir)
+
+
+chdir()
+
+
 try:
     import zcommons
 except:

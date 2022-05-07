@@ -31,6 +31,7 @@ import unittest
 
 if not args.exclude_counter:
     from .test_counter import *
+from .test_o2d import *
 from .test_threadgroup import *
 
 
