@@ -23,9 +23,11 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.6",
     package_dir={"": "src"},
     packages=["zcommons"],
     include_package_data=True,
-    install_requires=[]
+    install_requires=[
+        "dataclasses;python_version<'3.7'"
+    ]
 )

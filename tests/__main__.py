@@ -35,4 +35,4 @@ from .test_o2d import *
 from .test_threadgroup import *
 
 
-unittest.main(argv=sys.argv[0:1])
+unittest.main(argv=sys.argv[0:1], verbosity=2)
