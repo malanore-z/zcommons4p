@@ -3,8 +3,6 @@ import random
 import unittest
 
 import zcommons as zc
-import tests
-
 
 global_counter: zc.Counter = None
 

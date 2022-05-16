@@ -1,0 +1,218 @@
+__all__ = [
+    "Timer",
+    "timer"
+]
+
+import time
+import sys
+from functools import wraps
+from typing import Union
+
+from zcommons.units import TimeUnits
+
+
+def py36_perf_counter_ns():
+    return int(time.perf_counter() * 1000000000)
+
+
+def py37_perf_counter_ns():
+    return time.perf_counter_ns()
+
+
+def py36_process_time_ns():
+    return int(time.process_time() * 1000000000)
+
+
+def py37_process_time_ns():
+    return time.process_time_ns()
+
+
+if sys.version_info.minor > 6:
+    perf_counter_ns = py37_perf_counter_ns
+    process_time_ns = py37_process_time_ns
+else:
+    perf_counter_ns = py36_perf_counter_ns
+    process_time_ns = py36_process_time_ns
+
+
+class Timer(object):
+
+    """
+    A Single Thread Timer
+    =====================
+    A timer which supports start, pause, record, etc.
+    """
+
+    def __init__(self, name: str = None, unit: Union[str, TimeUnits] = TimeUnits.SECOND):
+        super(Timer, self).__init__()
+        self.name = name if name is not None else "Timer"
+        self.unit = TimeUnits(unit)
+        self.__records = []
+        self.__elapsed_time_ns = [0, 0]
+        self.__record_time_ns = [0, 0]
+        self.__start_time_point_ns = [0, 0]
+        self.__stop_time_point_ns = [0, 0]
+        self.__running = False
+        self.__pausing = False
+
+    def start(self):
+        if self.__running:
+            return
+        self.__running = True
+        self.__start_time_point_ns = perf_counter_ns(), process_time_ns()
+
+    def pause(self):
+        if not self.__running or self.__pausing:
+            return
+        self.__pausing = True
+        pc, pt = perf_counter_ns(), process_time_ns()
+        self.__record_time_ns[0] += pc - self.__start_time_point_ns[0]
+        self.__record_time_ns[1] += pt - self.__start_time_point_ns[1]
+
+    def resume(self):
+        if not self.__running or not self.__pausing:
+            return
+        self.__start_time_point_ns = [perf_counter_ns(), process_time_ns()]
+        self.__pausing = False
+
+    def record(self):
+        self.__record(is_stop=False)
+
+    def stop(self):
+        self.__record(is_stop=True)
+        self.__running = False
+
+    def elapsed_records(self, unit: Union[str, TimeUnits] = None, exclude_zero: bool = False):
+        if unit is None:
+            unit = self.unit
+        ret = []
+        for r in self.__records:
+            if exclude_zero and r[0] == 0 and r[1] == 0:
+                continue
+            ret.append({
+                "perf_counter": TimeUnits.NANO.convert_to(r[0], unit),
+                "process_time": TimeUnits.NANO.convert_to(r[1], unit)
+            })
+        return ret
+
+    def elapsed(self, unit: Union[str, TimeUnits] = None):
+        if unit is None:
+            unit = self.unit
+        pc_ns, pt_ns = self.elapsed_ns()
+        pc = TimeUnits.NANO.convert_to(pc_ns, unit)
+        pt = TimeUnits.NANO.convert_to(pt_ns, unit)
+        return pc, pt
+
+    def elapsed_ns(self):
+        if not self.__running:
+            return self.__elapsed_time_ns[0], self.__elapsed_time_ns[1]
+        else:
+            rec_pc, rec_pt = self.__record_elapsed()
+            return self.__elapsed_time_ns[0] + rec_pc, self.__elapsed_time_ns[1] + rec_pt
+
+    def __record(self, is_stop=False):
+        if not self.__running:
+            return
+        rec_pc, rec_pt = self.__record_elapsed(is_stop=is_stop)
+        self.__records.append((rec_pc, rec_pt))
+        self.__record_time_ns = [0, 0]
+        self.__elapsed_time_ns[0] += rec_pc
+        self.__elapsed_time_ns[1] += rec_pt
+
+    def __record_elapsed(self, is_stop=False):
+        rec_pc, rec_pt = self.__record_time_ns
+        pc, pt = perf_counter_ns(), process_time_ns()
+        if not self.__pausing:
+            rec_pc += pc - self.__start_time_point_ns[0]
+            rec_pt += pt - self.__start_time_point_ns[1]
+        self.__start_time_point_ns = [pc, pt]
+        if is_stop:
+            self.__stop_time_point_ns = [pc, pt]
+        return rec_pc, rec_pt
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
+
+
+def __show_timer_res(res: dict):
+    print(f"Run {res['name']} for {res['repeat']} times.")
+    print(f"  |- Total perf counter: {res['perf_counter']}{res['unit']}")
+    print(f"  |- Total process time: {res['process_time']}{res['unit']}")
+    print(f"  |- Avg   perf counter: {res['perf_counter'] / res['repeat']}{res['unit']}")
+    print(f"  |- Avg   process time: {res['process_time'] / res['repeat']}{res['unit']}")
+    print()
+    print(f"The following is a detailed time record of each run:")
+
+    def __left_pad_zero(x: int, ndigits: int):
+        x_str = str(x)
+        zero_str = "0" * (ndigits - len(x_str))
+        return zero_str + x_str
+
+    if res['repeat'] <= 10:
+        for i in range(res["repeat"]):
+            print(f"Run {i + 1:02} - perf counter: {res['records'][i]['perf_counter']}{res['unit']}")
+            print(f"       - process time: {res['records'][i]['process_time']}{res['unit']}")
+    else:
+        ndigits = len(str(res["repeat"]))
+        for i in range(5):
+            print(
+                f"Run {__left_pad_zero(i + 1, ndigits)} - perf counter: {res['records'][i]['perf_counter']}{res['unit']}")
+            print(f"    {' ' * ndigits} - process time: {res['records'][i]['process_time']}{res['unit']}")
+        print(f"....{'.' * ndigits}")
+        for i in range(res["repeat"] - 5, res["repeat"]):
+            print(
+                f"Run {__left_pad_zero(i + 1, ndigits)} - perf counter: {res['records'][i]['perf_counter']}{res['unit']}")
+            print(f"    {' ' * ndigits} - process time: {res['records'][i]['process_time']}{res['unit']}")
+
+
+def timer(name: str = None, unit: Union[str, TimeUnits] = TimeUnits.SECOND, repeat: int = 1, res: dict = None,
+          show: bool = False):
+    """
+    the decorator of Timer.
+
+    :param name: the timer task name
+    :param unit: the unit of res
+    :param repeat: exec task function times
+    :param res: a dict for storing result
+    :param show: whether print timer info to stdout
+    :return: the first exec result of task func
+    """
+    def decorate(func):
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            real_name = name
+            if real_name is None:
+                real_name = getattr(func, "__name__", None)
+            if real_name is None:
+                real_name = "timer"
+            real_res = res
+            if real_res is None:
+                real_res = {}
+
+            with Timer(real_name, unit) as tmer:
+                ret = func(*args, **kwargs)
+                if repeat > 1:
+                    for _ in range(repeat - 1):
+                        tmer.record()
+                        func(*args, **kwargs)
+
+            pc, pt = tmer.elapsed()
+            real_res["name"] = real_name
+            real_res["unit"] = TimeUnits(unit).value
+            real_res["repeat"] = repeat
+            real_res["perf_counter"] = pc
+            real_res["process_time"] = pt
+            real_res["records"] = tmer.elapsed_records()
+            if show:
+                __show_timer_res(real_res)
+
+            return ret
+
+        return wrapper
+
+    return decorate

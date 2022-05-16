@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="zcommons",
-    version="0.0.1",
+    version="0.0.2",
     author="malanore.z",
     author_email="malanore.z@gmail.com",
     description="A collection of common utils for python.",
@@ -24,9 +24,10 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.6",
-    package_dir={"": "src"},
-    packages=["zcommons"],
-    include_package_data=True,
+    packages=setuptools.find_packages(".", include=("zcommons", "zcommons.*")),
+    package_data={
+        "zcommons": ["resources/*"]
+    },
     install_requires=[
         "dataclasses;python_version<'3.7'"
     ]
