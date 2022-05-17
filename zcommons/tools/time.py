@@ -1,13 +1,12 @@
 import argparse
 import subprocess
-import sys
 
-from zcommons import timer
+import zcommons as zc
 
 
 def main(args):
 
-    @timer(name=args.cmds[0], repeat=args.repeat, show=True)
+    @zc.timer(name=args.cmds[0], repeat=args.repeat, show=True)
     def run():
         subprocess.run(args.cmds, shell=False)
 

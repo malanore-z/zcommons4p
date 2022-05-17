@@ -1,5 +1,7 @@
 import unittest
 
+import zcommons as zc
+
 
 class UnitsTest(unittest.TestCase):
 
@@ -10,7 +12,7 @@ class UnitsTest(unittest.TestCase):
         self.assertEqual(int(unit_r.convert_from(num_l, unit_l)), int(num_r))
 
     def testTime(self):
-        from zcommons import TimeUnits as T
+        from zcommons.units import TimeUnits as T
         self.assertUnitEqual(1, T.MICRO, 1000, T.NANO)
         self.assertUnitEqual(5, T.MILLI, 5000, T.MICRO)
         self.assertUnitEqual(9, T.SECOND, 9000, T.MILLI)
@@ -18,7 +20,7 @@ class UnitsTest(unittest.TestCase):
         self.assertUnitEqual(10, T.HOUR, 600, T.MINUTE)
 
     def testNumber(self):
-        from zcommons import NumberUnits as N
+        from zcommons.units import NumberUnits as N
         self.assertUnitEqual(1234567890, N.PETA, 12345678900000000000000, N.HECTO)
         self.assertUnitEqual(3, N.PETA, 3000, N.TERA)
         self.assertUnitEqual(2, N.TERA, 2000, N.GIGA)
@@ -29,7 +31,7 @@ class UnitsTest(unittest.TestCase):
         self.assertUnitEqual(3, N.DECA, 30, N.BASE)
 
     def testBinary(self):
-        from zcommons import BinaryUnits as B
+        from zcommons.units import BinaryUnits as B
         self.assertUnitEqual(8, B.PiB, 64, B.Pib)
         # bytes
         self.assertUnitEqual(5, B.PiB, 5120, B.TiB)
@@ -45,5 +47,5 @@ class UnitsTest(unittest.TestCase):
         self.assertUnitEqual(4, B.Kib, 4096, B.b)
 
     def testError(self):
-        self.assertRaises(ValueError, zcommons.units.TimeUnits.SECOND.convert_to, 1, "Kib")
-        self.assertRaises(TypeError, zcommons.units.TimeUnits.SECOND.convert_to, 1, zcommons.units.NumberUnits.KILO)
+        self.assertRaises(ValueError, zc.units.TimeUnits.SECOND.convert_to, 1, "Kib")
+        self.assertRaises(TypeError, zc.units.TimeUnits.SECOND.convert_to, 1, zc.units.NumberUnits.KILO)

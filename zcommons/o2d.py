@@ -4,7 +4,7 @@ __all__ = [
 ]
 
 import dataclasses
-import typing
+import sys
 
 
 _BUILTIN_BASE_TYPES = [type(None), bool, int, float, str, bytes]
@@ -12,6 +12,14 @@ _BUILTIN_CONTAIN_TYPES = [tuple, list, set, dict]
 
 
 def asdict(obj, *, dict_factory=dict):
+    """
+    Convert object to dict.
+    If the type of ``object`` is built-in types, the type of return value is same with the type of ``object``.
+
+    :param obj: the object of built-in types or custom class with ``dataclass`` decorator.
+    :param dict_factory:  the real type of return dict.
+    :return:
+    """
     if dataclasses.is_dataclass(obj):
         return dataclasses.asdict(obj, dict_factory=dict_factory)
     # return itself directly if obj is base type
@@ -45,7 +53,14 @@ def asdict(obj, *, dict_factory=dict):
 
 
 def asobj(_cls, d):
-    if not isinstance(_cls, type):
+    """
+    Construct object from dict.
+
+    :param _cls: the type of return value.
+    :param d: the data dict.
+    :return: a object of ``_cls``
+    """
+    if not isinstance(_cls, type) and not _is_typing(_cls):
         raise TypeError(f"asobj() should be called on type")
     if dataclasses.is_dataclass(_cls):
         init_params = {}
@@ -73,10 +88,10 @@ def asobj(_cls, d):
             setattr(ret, k, v)
         return ret
 
-    if isinstance(_cls, typing.GenericMeta):
+    if _is_typing(_cls):
         if _cls.__dict__["__args__"] is None:
             raise TypeError(f"asobj() should be called on container which specified element type")
-        orig_base = _cls.__dict__["__extra__"]
+        orig_base = _origin(_cls)
         if orig_base is dict:
             key_type, val_type = _cls.__dict__["__args__"]
             if type(d) is not dict:
@@ -101,5 +116,31 @@ def asobj(_cls, d):
     raise TypeError(f"unsupport type {_cls}")
 
 
+def __py36_is_typing(_cls):
+    from typing import GenericMeta
+    return isinstance(_cls, GenericMeta)
+
+
+def __py37_is_typing(_cls):
+    from typing import _Final
+    return isinstance(_cls, _Final)
+
+
+def __py36_origin(_cls):
+    return _cls.__dict__["__extra__"]
+
+
+def __py37_origin(_cls):
+    return _cls.__dict__["__origin__"]
+
+
+if sys.version_info.minor > 6:
+    _is_typing = __py37_is_typing
+    _origin = __py37_origin
+else:
+    _is_typing = __py36_is_typing
+    _origin = __py36_origin
+
+
 def _is_typing_container(_cls):
-    return isinstance(_cls, typing.GenericMeta) and _cls.__dict__["__extra__"] in _BUILTIN_CONTAIN_TYPES
+    return _is_typing(_cls) and _origin(_cls) in _BUILTIN_CONTAIN_TYPES

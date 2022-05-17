@@ -4,6 +4,10 @@ import setuptools
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+with open("requirements.txt", "r", encoding="utf-8") as f:
+    install_requires = [line.strip() for line in f.readlines()]
+    install_requires = [r for r in install_requires if r != ""]
+
 
 setuptools.setup(
     name="zcommons",
@@ -28,7 +32,6 @@ setuptools.setup(
     package_data={
         "zcommons": ["resources/*"]
     },
-    install_requires=[
-        "dataclasses;python_version<'3.7'"
-    ]
+    include_package_data=True,
+    install_requires=install_requires
 )

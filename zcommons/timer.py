@@ -6,33 +6,33 @@ __all__ = [
 import time
 import sys
 from functools import wraps
-from typing import Union
+from typing import Union, List, Dict, Tuple
 
 from zcommons.units import TimeUnits
 
 
-def py36_perf_counter_ns():
+def __py36_perf_counter_ns():
     return int(time.perf_counter() * 1000000000)
 
 
-def py37_perf_counter_ns():
+def __py37_perf_counter_ns():
     return time.perf_counter_ns()
 
 
-def py36_process_time_ns():
+def __py36_process_time_ns():
     return int(time.process_time() * 1000000000)
 
 
-def py37_process_time_ns():
+def __py37_process_time_ns():
     return time.process_time_ns()
 
 
 if sys.version_info.minor > 6:
-    perf_counter_ns = py37_perf_counter_ns
-    process_time_ns = py37_process_time_ns
+    perf_counter_ns = __py37_perf_counter_ns
+    process_time_ns = __py37_process_time_ns
 else:
-    perf_counter_ns = py36_perf_counter_ns
-    process_time_ns = py36_process_time_ns
+    perf_counter_ns = __py36_perf_counter_ns
+    process_time_ns = __py36_process_time_ns
 
 
 class Timer(object):
@@ -43,9 +43,14 @@ class Timer(object):
     A timer which supports start, pause, record, etc.
     """
 
-    def __init__(self, name: str = None, unit: Union[str, TimeUnits] = TimeUnits.SECOND):
+    def __init__(self, name: str = "Timer", unit: Union[str, TimeUnits] = TimeUnits.SECOND):
+        """
+
+        :param name: a meaningful string representing the timer function.
+        :param unit: the unit of result.
+        """
         super(Timer, self).__init__()
-        self.name = name if name is not None else "Timer"
+        self.name = name
         self.unit = TimeUnits(unit)
         self.__records = []
         self.__elapsed_time_ns = [0, 0]
@@ -55,13 +60,25 @@ class Timer(object):
         self.__running = False
         self.__pausing = False
 
-    def start(self):
+    def start(self) -> None:
+        """
+        Start the timer.
+        There will have no effect if the timer already started.
+
+        :return:
+        """
         if self.__running:
             return
         self.__running = True
         self.__start_time_point_ns = perf_counter_ns(), process_time_ns()
 
-    def pause(self):
+    def pause(self) -> None:
+        """
+        Pause the timer.
+        There will have no effect if the timer not in running or already paused.
+
+        :return:
+        """
         if not self.__running or self.__pausing:
             return
         self.__pausing = True
@@ -69,20 +86,46 @@ class Timer(object):
         self.__record_time_ns[0] += pc - self.__start_time_point_ns[0]
         self.__record_time_ns[1] += pt - self.__start_time_point_ns[1]
 
-    def resume(self):
+    def resume(self) -> None:
+        """
+        Resume the timer from pausing status.
+        There will have no effect if the timer not in running or not in pausing.
+
+        :return:
+        """
         if not self.__running or not self.__pausing:
             return
         self.__start_time_point_ns = [perf_counter_ns(), process_time_ns()]
         self.__pausing = False
 
-    def record(self):
+    def record(self) -> None:
+        """
+        Generate a new time record.
+        There will have no effect if the timer not in running.
+
+        :return:
+        """
         self.__record(is_stop=False)
 
-    def stop(self):
+    def stop(self) -> None:
+        """
+        Stop the timer and generate a new time record.
+        There will have no effect if the timer not in running.
+
+        :return:
+        """
         self.__record(is_stop=True)
         self.__running = False
 
-    def elapsed_records(self, unit: Union[str, TimeUnits] = None, exclude_zero: bool = False):
+    def elapsed_records(self, unit: Union[str, TimeUnits] = None, exclude_zero: bool = False) -> List[Dict[str, int]]:
+        """
+        Get all records with specified unit.
+
+        :param unit: the time unit of result, the ``self.unit`` will be used if it is ``None``.
+        :param exclude_zero:  whether keep the records which have zero time duration. If call ``record`` repeatly in
+        pausing status, zero time duration records will be generated.
+        :return: a record list.
+        """
         if unit is None:
             unit = self.unit
         ret = []
@@ -95,7 +138,14 @@ class Timer(object):
             })
         return ret
 
-    def elapsed(self, unit: Union[str, TimeUnits] = None):
+    def elapsed(self, unit: Union[str, TimeUnits] = None) -> Tuple[int, int]:
+        """
+        The elapsed time from started time point with ``unit``.
+        If the timer already stopped, this method will return the duration from started to stopped time point.
+
+        :param unit: the time unit, the ``self.unit`` will be used if it is ``None``.
+        :return: a tuple of perf counter and process time
+        """
         if unit is None:
             unit = self.unit
         pc_ns, pt_ns = self.elapsed_ns()
@@ -103,7 +153,13 @@ class Timer(object):
         pt = TimeUnits.NANO.convert_to(pt_ns, unit)
         return pc, pt
 
-    def elapsed_ns(self):
+    def elapsed_ns(self) -> Tuple[int, int]:
+        """
+        The elapsed nanoseconds from started time point.
+        If the timer already stopped, this method will return the duration from started to stopped time point.
+
+        :return: a tuple of perf counter and process time
+        """
         if not self.__running:
             return self.__elapsed_time_ns[0], self.__elapsed_time_ns[1]
         else:

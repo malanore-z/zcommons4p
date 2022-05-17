@@ -1,3 +1,10 @@
+"""
+Units
+=====
+Some common units such as time, number and bytes.
+Every unit class is an enum, and has two convert methods, named ``convert_to`` and ``convert_from``.
+"""
+
 __all__ = [
     "TimeUnits",
     "NumberUnits",
@@ -14,9 +21,24 @@ _convert_values = {}
 class _Converter:
     
     def convert_from(self, number: Union[int, float], src_unit) -> Union[int, float]:
+        """
+        convert ``number`` from ``src_unit`` to ``self``.
+
+        :param number: a number with int or float type
+        :param src_unit: the unit of ``number``
+        :return: the return value has the same type with ``number``, it means, if the type of ``number`` is int, the
+        method will use integer division.
+        """
         return self.__convert(number, src_unit, self)
 
     def convert_to(self, number: Union[int, float], dst_unit) -> Union[int, float]:
+        """
+        convert ``number`` from ``self`` to ``dst_unit``.
+
+        :param number: a number with int or float type
+        :param dst_unit: the unit of return value
+        :return: the return value has the same type with ``number``.
+        """
         return self.__convert(number, self, dst_unit)
 
     @classmethod
@@ -48,6 +70,11 @@ class _Converter:
 
 
 class TimeUnits(_Converter, Enum):
+    """
+    Time Units
+    ==========
+    The time units, from nanoseconds up to hours.
+    """
     NANO = "ns"
     MICRO = "us"
     MILLI = "ms"
@@ -68,6 +95,11 @@ _convert_values[TimeUnits] = _time_values
 
 
 class NumberUnits(_Converter, Enum):
+    """
+    Number Units
+    ============
+    The decimal number unit, from one up to peta(1e15).
+    """
     BASE = "b"
     DECA = "d"
     HECTO = "h"
@@ -92,6 +124,11 @@ _convert_values[NumberUnits] = _number_values
 
 
 class BinaryUnits(_Converter, Enum):
+    """
+    Binary Units
+    ============
+    The bit units and byte units, from B(b) up to PiB(b).
+    """
     
     b = "b"
     B = "B"
