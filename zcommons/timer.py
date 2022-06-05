@@ -36,7 +36,6 @@ else:
 
 
 class Timer(object):
-
     """
     A Single Thread Timer
     =====================
@@ -122,7 +121,7 @@ class Timer(object):
         Get all records with specified unit.
 
         :param unit: the time unit of result, the ``self.unit`` will be used if it is ``None``.
-        :param exclude_zero:  whether keep the records which have zero time duration. If call ``record`` repeatly in
+        :param exclude_zero:  whether ignore the records which have zero time duration. If call ``record`` repeatly in
         pausing status, zero time duration records will be generated.
         :return: a record list.
         """
@@ -137,6 +136,41 @@ class Timer(object):
                 "process_time": TimeUnits.NANO.convert_to(r[1], unit)
             })
         return ret
+
+    def last_record(self, unit: Union[str, TimeUnits] = None, exclude_zero: bool = False) -> Tuple[int, int]:
+        """
+        The elapsed time from last record with ``unit``.
+
+        :param unit: the time unit of result, the ``self.unit`` will be used if it is ``None``.
+        :param exclude_zero: whether ignore the records which have zero time duration.
+        :return:
+        """
+        if unit is None:
+            unit = self.unit
+        pc_ns, pt_ns = self.last_record_ns(exclude_zero)
+        pc = TimeUnits.NANO.convert_to(pc_ns, unit)
+        pt = TimeUnits.NANO.convert_to(pt_ns, unit)
+        return pc, pt
+
+    def last_record_ns(self, exclude_zero: bool = False) -> Tuple[int, int]:
+        """
+        The elapsed nanoseconds from last record.
+
+        :param exclude_zero: whether ignore the records which have zero time duration.
+        :return:
+        """
+        if not self.__running:
+            for i in range(len(self.__records) - 1, -1, -1):
+                if not exclude_zero or (self.__records[i][0] == 0 and self.__records[i][1] == 0):
+                    return tuple(self.__records[i])
+            return 0, 0
+        else:
+            if self.__pausing:
+                return self.__record_time_ns[0], self.__record_time_ns[1]
+            else:
+                pc, pt = perf_counter_ns(), process_time_ns()
+                return self.__record_time_ns[0] + pc - self.__start_time_point_ns[0], \
+                       self.__record_time_ns[1] + pt - self.__start_time_point_ns[1]
 
     def elapsed(self, unit: Union[str, TimeUnits] = None) -> Tuple[int, int]:
         """
@@ -237,6 +271,7 @@ def timer(name: str = None, unit: Union[str, TimeUnits] = TimeUnits.SECOND, repe
     :param show: whether print timer info to stdout
     :return: the first exec result of task func
     """
+
     def decorate(func):
 
         @wraps(func)

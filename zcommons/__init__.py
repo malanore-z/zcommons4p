@@ -1,5 +1,6 @@
 
 import zcommons.o2d
+import zcommons.module
 import zcommons.units
 from zcommons.colorama import cprint
 from zcommons.counter import *
