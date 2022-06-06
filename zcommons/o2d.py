@@ -5,7 +5,7 @@ __all__ = [
 
 import dataclasses
 import sys
-
+import typing
 
 _BUILTIN_BASE_TYPES = [type(None), bool, int, float, str, bytes]
 _BUILTIN_CONTAIN_TYPES = [tuple, list, set, dict]
@@ -89,6 +89,8 @@ def asobj(_cls, d):
         return ret
 
     if _is_typing(_cls):
+        if _cls is typing.Any:
+            return d
         if _cls.__dict__["__args__"] is None:
             raise TypeError(f"asobj() should be called on container which specified element type")
         orig_base = _origin(_cls)
@@ -96,8 +98,8 @@ def asobj(_cls, d):
             key_type, val_type = _cls.__dict__["__args__"]
             if type(d) is not dict:
                 raise TypeError(f"the type of d is not {_cls}")
-            ret = _cls()
-            for k, v in d.item():
+            ret = dict()
+            for k, v in d.items():
                 ret[asobj(key_type, k)] = asobj(val_type, v)
             return ret
         if orig_base in [tuple, list, set]:
