@@ -3,36 +3,11 @@ __all__ = [
     "timer"
 ]
 
-import time
-import sys
 from functools import wraps
 from typing import Union, List, Dict, Tuple
 
-from zcommons.units import TimeUnits
-
-
-def __py36_perf_counter_ns():
-    return int(time.perf_counter() * 1000000000)
-
-
-def __py37_perf_counter_ns():
-    return time.perf_counter_ns()
-
-
-def __py36_process_time_ns():
-    return int(time.process_time() * 1000000000)
-
-
-def __py37_process_time_ns():
-    return time.process_time_ns()
-
-
-if sys.version_info.minor > 6:
-    perf_counter_ns = __py37_perf_counter_ns
-    process_time_ns = __py37_process_time_ns
-else:
-    perf_counter_ns = __py36_perf_counter_ns
-    process_time_ns = __py36_process_time_ns
+from .units import TimeUnits
+from . import time as time
 
 
 class Timer(object):
@@ -69,7 +44,7 @@ class Timer(object):
         if self.__running:
             return
         self.__running = True
-        self.__start_time_point_ns = perf_counter_ns(), process_time_ns()
+        self.__start_time_point_ns = time.perf_counter_ns(), time.process_time_ns()
 
     def pause(self) -> None:
         """
@@ -81,7 +56,7 @@ class Timer(object):
         if not self.__running or self.__pausing:
             return
         self.__pausing = True
-        pc, pt = perf_counter_ns(), process_time_ns()
+        pc, pt = time.perf_counter_ns(), time.process_time_ns()
         self.__record_time_ns[0] += pc - self.__start_time_point_ns[0]
         self.__record_time_ns[1] += pt - self.__start_time_point_ns[1]
 
@@ -94,7 +69,7 @@ class Timer(object):
         """
         if not self.__running or not self.__pausing:
             return
-        self.__start_time_point_ns = [perf_counter_ns(), process_time_ns()]
+        self.__start_time_point_ns = [time.perf_counter_ns(), time.process_time_ns()]
         self.__pausing = False
 
     def record(self) -> None:
@@ -168,7 +143,7 @@ class Timer(object):
             if self.__pausing:
                 return self.__record_time_ns[0], self.__record_time_ns[1]
             else:
-                pc, pt = perf_counter_ns(), process_time_ns()
+                pc, pt = time.perf_counter_ns(), time.process_time_ns()
                 return self.__record_time_ns[0] + pc - self.__start_time_point_ns[0], \
                        self.__record_time_ns[1] + pt - self.__start_time_point_ns[1]
 
@@ -211,7 +186,7 @@ class Timer(object):
 
     def __record_elapsed(self, is_stop=False):
         rec_pc, rec_pt = self.__record_time_ns
-        pc, pt = perf_counter_ns(), process_time_ns()
+        pc, pt = time.perf_counter_ns(), time.process_time_ns()
         if not self.__pausing:
             rec_pc += pc - self.__start_time_point_ns[0]
             rec_pt += pt - self.__start_time_point_ns[1]

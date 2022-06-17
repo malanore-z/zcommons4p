@@ -38,6 +38,13 @@ class Sample:
         self.second = "second"
 
 
+@dataclass()
+class ByteDemo:
+
+    id: str
+    data: bytes
+
+
 class O2dTest(unittest.TestCase):
 
     def test_base(self):
@@ -73,3 +80,17 @@ class O2dTest(unittest.TestCase):
         self.assertEqual(s1d, {"first": "first-1", "second": "second-1", "third": "third-1"})
         s1_rec = zc.o2d.asobj(Sample, s1d)
         self.assertEqual(s1, s1_rec)
+
+    def test_bytes(self):
+        bd1 = ByteDemo("q", b"wert")
+        bd1d = zc.o2d.asdict(bd1)
+        self.assertEqual(bd1d, {"id": "q", "data": b"wert"})
+        bd1_rec = zc.o2d.asobj(ByteDemo, bd1d)
+        self.assertEqual(bd1, bd1_rec)
+
+    def test_none(self):
+        c = Chapter(name="first", npages=None, nwords=None)
+        cd = zc.o2d.asdict(c)
+        self.assertEqual(cd, {"name": "first", "npages": None, "nwords": None})
+        c_rec = zc.o2d.asobj(Chapter, cd)
+        self.assertEqual(c, c_rec)

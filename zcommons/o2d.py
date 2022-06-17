@@ -60,6 +60,8 @@ def asobj(_cls, d):
     :param d: the data dict.
     :return: a object of ``_cls``
     """
+    if d is None:
+        return None
     if not isinstance(_cls, type) and not _is_typing(_cls):
         raise TypeError(f"asobj() should be called on type")
     if dataclasses.is_dataclass(_cls):

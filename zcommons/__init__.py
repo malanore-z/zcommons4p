@@ -1,12 +1,11 @@
-
 import zcommons.o2d
 import zcommons.module
 import zcommons.units
 from zcommons.colorama import cprint
+from zcommons.config import Config
 from zcommons.counter import *
 from zcommons.threadgroup import *
 from zcommons.timer import *
-
 
 # alias for colorama colors
 FORE_BLACK = zcommons.colorama.Fore.BLACK
