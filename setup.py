@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="zcommons",
-    version="0.1.0",
+    version="0.1.1",
     author="malanore.z",
     author_email="malanore.z@gmail.com",
     description="A collection of common utils for python.",

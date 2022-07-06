@@ -1,8 +1,9 @@
 import zcommons.o2d
 import zcommons.module
+import zcommons.time
 import zcommons.units
 from zcommons.colorama import cprint
-from zcommons.config import Config
+from zcommons.config_dict import ConfigDict
 from zcommons.counter import *
 from zcommons.threadgroup import *
 from zcommons.timer import *
