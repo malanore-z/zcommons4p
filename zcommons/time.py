@@ -16,9 +16,5 @@ if "time_ns" not in globals():
         return round(__SCALE * perf_counter())
 
 
-def second_time():
-    return int(time.time())
-
-
-def milli_time():
+def time_ms():
     return int(1000 * time.time())
