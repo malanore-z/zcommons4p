@@ -1,4 +1,4 @@
-import zcommons.o2d
+import zcommons.dataclass
 import zcommons.module
 import zcommons.time
 import zcommons.units

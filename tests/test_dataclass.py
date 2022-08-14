@@ -48,49 +48,49 @@ class ByteDemo:
 class O2dTest(unittest.TestCase):
 
     def test_base(self):
-        self.assertEqual(zc.o2d.asdict(123), 123)
-        self.assertEqual(zc.o2d.asdict([1, 2, 3]), [1, 2, 3])
-        self.assertEqual(zc.o2d.asdict({'a': 1, 'b': 2}), {'a': 1, 'b': 2})
-        self.assertEqual(zc.o2d.asobj(int, "123"), 123)
-        self.assertEqual(zc.o2d.asobj(Tuple[int], [1, 2, 3]), (1, 2, 3))
+        self.assertEqual(zc.dataclass.asdict(123), 123)
+        self.assertEqual(zc.dataclass.asdict([1, 2, 3]), [1, 2, 3])
+        self.assertEqual(zc.dataclass.asdict({'a': 1, 'b': 2}), {'a': 1, 'b': 2})
+        self.assertEqual(zc.dataclass.asobj(int, "123"), 123)
+        self.assertEqual(zc.dataclass.asobj(Tuple[int], [1, 2, 3]), (1, 2, 3))
 
     def test_dataclass(self):
         c1 = Chapter("first", 2, 2000)
-        c1d = zc.o2d.asdict(c1)
+        c1d = zc.dataclass.asdict(c1)
         self.assertEqual(c1d, {"name": "first", "npages": 2, "nwords": 2000})
-        c1_rec = zc.o2d.asobj(Chapter, c1d)
+        c1_rec = zc.dataclass.asobj(Chapter, c1d)
         self.assertEqual(c1, c1_rec)
 
         c2 = Chapter("second", 3, 1000)
-        c2d = zc.o2d.asdict(c2)
+        c2d = zc.dataclass.asdict(c2)
         b1 = Book("book1", "author1", [c1, c2])
-        b1d = zc.o2d.asdict(b1)
+        b1d = zc.dataclass.asdict(b1)
         self.assertEqual(b1d, {"name": "book1", "author": "author1", "chapters": [c1d, c2d], "nwords": 3000})
-        b1_rec = zc.o2d.asobj(Book, b1d)
+        b1_rec = zc.dataclass.asobj(Book, b1d)
         self.assertEqual(b1, b1_rec)
 
     def test_no_init(self):
         s1 = Sample("first")
-        s1d = zc.o2d.asdict(s1)
+        s1d = zc.dataclass.asdict(s1)
         self.assertEqual(s1d, {"first": "first", "second": "second", "third": "third"})
         s1.first = "first-1"
         s1.second = "second-1"
         s1.third = "third-1"
-        s1d = zc.o2d.asdict(s1)
+        s1d = zc.dataclass.asdict(s1)
         self.assertEqual(s1d, {"first": "first-1", "second": "second-1", "third": "third-1"})
-        s1_rec = zc.o2d.asobj(Sample, s1d)
+        s1_rec = zc.dataclass.asobj(Sample, s1d)
         self.assertEqual(s1, s1_rec)
 
     def test_bytes(self):
         bd1 = ByteDemo("q", b"wert")
-        bd1d = zc.o2d.asdict(bd1)
+        bd1d = zc.dataclass.asdict(bd1)
         self.assertEqual(bd1d, {"id": "q", "data": b"wert"})
-        bd1_rec = zc.o2d.asobj(ByteDemo, bd1d)
+        bd1_rec = zc.dataclass.asobj(ByteDemo, bd1d)
         self.assertEqual(bd1, bd1_rec)
 
     def test_none(self):
         c = Chapter(name="first", npages=None, nwords=None)
-        cd = zc.o2d.asdict(c)
+        cd = zc.dataclass.asdict(c)
         self.assertEqual(cd, {"name": "first", "npages": None, "nwords": None})
-        c_rec = zc.o2d.asobj(Chapter, cd)
+        c_rec = zc.dataclass.asobj(Chapter, cd)
         self.assertEqual(c, c_rec)

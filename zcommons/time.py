@@ -1,4 +1,3 @@
-import time
 from time import *
 
 
@@ -17,4 +16,4 @@ if "time_ns" not in globals():
 
 
 def time_ms():
-    return int(1000 * time.time())
+    return int(1000 * time())

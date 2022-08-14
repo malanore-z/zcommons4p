@@ -1,118 +1,202 @@
+import copy
+from itertools import chain
 from typing import Union, Sequence
+from collections.abc import ItemsView, KeysView, ValuesView
+
+from sortedcontainers import SortedList, SortedDict
 
 
 KeyType = Union[str, Sequence[str]]
 
 
+class _NotGiven(object):
+
+    def __repr__(self):
+        return "<not-given>"
+
+
+class ConfigItemsView(ItemsView):
+
+    def __init__(self, mapping):
+        super(ConfigItemsView, self).__init__(mapping)
+
+
+class ConfigValuesView(ValuesView):
+
+    def __init__(self, mapping):
+        super(ConfigValuesView, self).__init__(mapping)
+
+
+class ConfigKeysView(KeysView):
+
+    def __init__(self, mapping):
+        super(ConfigKeysView, self).__init__(mapping)
+
+
 class ConfigDict(dict):
 
+    """ConfigDict is a mapping for config key-value pairs.
+
+    ConfigDict keys are maintained in increment sorted order, and split by `'.'`.
+
+    ConfigDict keys must be str. A key will be split as a sequence by `'.'`, and store in dict recursively.
+    For example, `a.b.c=1` will be stored as `{'a': {'b': {'c': 1}}}`.
     """
-    A dict subclass for config.
-    For example:
-        config_dict = ConfigDict()
-        config_dict["a.b.c1"] = "v1"
-        config_dict["a.b.c2"] = "v2"
-        config_dict["a.b.c.d1"] = 1
-        assert(config_dict["a"]["b"]["c1"] == "v1")
-    """
+
+    __not_given = _NotGiven()
 
     def __init__(self, d: dict = None):
+        """Initialize config dict instance.
+
+        Optional argument `d` defines init key-value pairs.
+
+        >>> d = {'a': {'b.c': 1}, 'd': 2}
+        >>> ConfigDict(d)
+        ConfigDict({'a.b.c': 1, 'd': 2})
+
+        :param d: the init key-value pairs.
+        """
         super(ConfigDict, self).__init__()
-        self.__d = {}
+        self.__dict = SortedDict()
         if d is None:
             d = {}
+        # Init config dict instance recursively
         for k, v in d.items():
             if isinstance(v, dict):
-                self.__d[k] = ConfigDict(v)
+                self.__put(k, ConfigDict(v), overwrite=True)
             else:
-                self.__d[k] = v
+                self.__put(k, v, overwrite=True)
 
-    def exists(self, __key, include_dict=False):
+    def clear(self) -> None:
         """
-        whether __key exists.
+        Remove all items from config dict
 
-        :param __key:
-        :param include_dict: whether include config dict, e.g. "a.b.c" and "a.b.d" exists, the value of "a.b" is config
-            dict, if include_dict is False, exists("a.b") returns False.
-        :return:
+        Runtime complexity: `O(n)`
         """
-        return self.__exists(__key, include_dict=include_dict)
+        self.__dict.clear()
 
-    def get(self, __key, __default=None):
+    def get(self, key, default=__not_given):
         """
         get the value of key
 
-        :param __key:
-        :param __default:
+        :param key:
+        :param default:
         :return:
         """
-        return self.__get(__key, default=__default)
+        return self.__get(key, default=default)
 
-    def put_if_absent(self, __key, __value):
-        """
-        put (__key, __value) if __key not exists.
+    def setdefault(self, key, default=None):
+        """Set (key, default) in config dict if key not exists.
 
-        :param __key:
-        :param __value:
+        :param key:
+        :param default:
         :return:
         """
-        self.__put(__key, __value, overwrite=False)
+        self.__put(key, default, overwrite=False)
 
-    def remove(self, __key, include_dict=False, strict=True):
-        """
-        remove __key
+    def update(self, config_dict, **kwargs) -> None:
+        if isinstance(config_dict, ConfigDict):
+            self.__dict.update(config_dict.__dict)
+        else:
+            self.__dict.update(ConfigDict(config_dict).__dict)
 
-        :param __key:
-        :param include_dict: whether remove batch values if the value of __key is config dict
-        :param strict: if raise exceptions when __key not found
-        :return:
-        """
-        self.__del(__key, include_dict, strict)
+    def __iter__(self):
+        return self.__generator(has_value=False)
+
+    def __repr__(self):
+        return f"ConfigDict({dict(self)})"
+
+    def __len__(self):
+        return self.__len_impl()
 
     def __contains__(self, __key):
-        return self.__exists(__key, include_dict=False)
-
-    def __setitem__(self, __key, value):
-        self.__put(__key, value, overwrite=True)
+        return self.__contains(__key)
 
     def __getitem__(self, __key):
         return self.__get(__key)
 
-    def __delitem__(self, __key):
-        self.__del(__key, include_dict=False, strict=True)
+    def __setitem__(self, __key, value):
+        """
+        Store item in config dict with `key` and corresponding `value`.
+
+        :param __key:
+        :param value:
+        :return:
+        """
+        self.__put(__key, value, overwrite=True)
+
+    def __delitem__(self, key):
+        """
+        Remove item from config dict identified by `key`.
+
+        ``cd.__delitem__(key)`` <==> ``del cd[key]``
+
+        >>> cd = ConfigDict({'a': {'b': 1, 'c': 2}})
+        >>> del cd['a.b']
+        >>> cd
+
+        >>> del cd['d']
+
+        :param key: `key` for item lookup
+        :raises KeyError: if key not found
+        """
+        self.__del(key)
+
+    @property
+    def __dict__(self):
+        return self.__items()
+
+    def __eq__(self, other):
+        return self.__dict.__eq__(other.__dict)
+
+    def __ne__(self, other):
+        return self.__dict.__ne__(other.__dict)
+
+    def copy(self):
+        ret = ConfigDict()
+        for k, v in self.__dict.items():
+            if isinstance(v, ConfigDict):
+                ret.__dict[k] = v.copy()
+            else:
+                ret.__dict[k] = copy.deepcopy(v)
+        return ret
 
     def keys(self):
-        all_keys = []
+        return ConfigKeysView(self.__items())
 
-        def __cat_keys(__config_dict, __key_seq):
-            for k, v in __config_dict.__d.items():
-                __key_seq.append(k)
-                if isinstance(v, ConfigDict):
-                    __cat_keys(v, __key_seq)
-                else:
-                    all_keys.append(".".join(__key_seq))
-                del __key_seq[len(__key_seq) - 1]
-
-        __cat_keys(self, [])
-        all_keys.sort()
-        return all_keys
+    def values(self):
+        return ConfigValuesView(self.__items())
 
     def items(self):
-        __keys = self.keys()
-        __items = []
-        for k in __keys:
-            __items.append((k, self.get(k)))
-        return __items
+        return ConfigItemsView(self.__items())
 
-    def __get(self, key, **kwargs):
+    def __items(self):
+        ret = {}
+
+        def _cat_items(cd, items, prefix):
+            for k, v in cd.__dict.items():
+                real_k = f"{prefix}.{k}" if prefix != "" else k
+                if isinstance(v, ConfigDict):
+                    _cat_items(v, items, real_k)
+                else:
+                    items[real_k] = v
+
+        _cat_items(self, ret, "")
+        return ret
+
+    def __contains(self, key):
+        key_seq = self.__split_key(key)
+        return self.__contains_impl(key_seq)
+
+    def __get(self, key, default=__not_given):
         key_seq = self.__split_key(key)
         try:
             return self.__get_impl(key_seq)
         except KeyError:
-            if "default" in kwargs:
-                return kwargs["default"]
-            else:
+            if default is self.__not_given:
                 raise KeyError(key)
+            else:
+                return default
 
     def __put(self, key, value, overwrite=True):
         key_seq = self.__split_key(key)
@@ -121,54 +205,83 @@ class ConfigDict(dict):
         except KeyError:
             raise KeyError(f"already exists a prefix key of {key}")
 
-    def __exists(self, key, include_dict):
-        try:
-            v = self[key]
-            if include_dict or not isinstance(v, ConfigDict):
-                return True
-            else:
-                return False
-        except KeyError:
-            return False
-
-    def __del(self, key, include_dict=False, strict=True):
+    def __del(self, key):
         key_seq = self.__split_key(key)
         try:
-            self.__del_impl(key_seq, include_dict)
+            self.__del_impl(key_seq)
         except KeyError:
-            if strict:
-                raise KeyError(key)
+            raise KeyError(key)
+
+    def __generator(self, has_value=True, *, prefix=""):
+        for k, v in self.__dict.items():
+            real_k = f"{prefix}.{k}" if prefix else k
+            if isinstance(v, ConfigDict):
+                for it in v.__generator(has_value, prefix=real_k):
+                    yield it
+            else:
+                if has_value:
+                    yield real_k, v
+                else:
+                    yield real_k
+
+    def __len_impl(self):
+        len_ = 0
+        for k, v in self.__dict.items():
+            if isinstance(v, ConfigDict):
+                len_ += v.__len_impl()
+            else:
+                len_ += 1
+        return len_
+
+    def __contains_impl(self, key_seq):
+        value = self.__dict.get(key_seq[0], self.__not_given)
+        if value is self.__not_given:
+            return False
+        if len(key_seq) == 1:
+            return True
+        if not isinstance(value, ConfigDict):
+            return False
+        return value.__contains_impl(key_seq[1:])
 
     def __get_impl(self, key_seq):
+        v = self.__dict.__getitem__(key_seq[0])
         if len(key_seq) == 1:
-            return self.__d[key_seq[0]]
-        v = self.__d[key_seq[0]]
+            return v
         if not isinstance(v, ConfigDict):
             raise KeyError()
         return v.__get_impl(key_seq[1:])
 
     def __put_impl(self, key_seq, value, overwrite):
         if len(key_seq) == 1:
-            if overwrite or key_seq[0] not in self.__d:
-                self.__d[key_seq[0]] = value
-            return
-        if key_seq[0] not in self.__d:
-            self.__d[key_seq[0]] = ConfigDict()
-        v = self.__d[key_seq[0]]
-        if not isinstance(v, ConfigDict):
+            if overwrite or key_seq[0] not in self.__dict:
+                self.__dict.__setitem__(key_seq[0], value)
+                return value
+            return self.__dict.get(key_seq[0])
+        if key_seq[0] in self.__dict:
+            value_dict = self.__dict.__getitem__(key_seq[0])
+        else:
+            value_dict = ConfigDict()
+            self.__dict.__setitem__(key_seq[0], value_dict)
+        if not isinstance(value_dict, ConfigDict):
             raise KeyError()
-        v.__put_impl(key_seq[1:], value, overwrite)
+        return value_dict.__put_impl(key_seq[1:], value, overwrite)
 
-    def __del_impl(self, key_seq, include_dict):
-        if len(key_seq) == 1:
-            if key_seq[0] in self.__d:
-                if not include_dict and isinstance(self.__d[key_seq[0]], ConfigDict):
-                    raise KeyError()
-            return
-        v = self.__d[key_seq[0]]
-        if not isinstance(v, ConfigDict):
+    def __del_impl(self, key_seq):
+        if key_seq[0] not in self.__dict:
             raise KeyError()
-        v.__del_impl(key_seq[1:], include_dict)
+        if len(key_seq) == 1:
+            self.__dict.__delitem__(key_seq[0])
+            return
+        value = self.__dict.__getitem__(key_seq[0])
+        if isinstance(value, ConfigDict):
+            value.__del_impl(key_seq[1:])
+            if len(value) == 0:
+                self.__dict.__delitem__(key_seq[0])
+        else:
+            raise KeyError()
+
+    def __update_imp(self, values):
+        pass
 
     @classmethod
     def __split_key(cls, key: str):

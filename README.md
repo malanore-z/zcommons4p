@@ -5,10 +5,10 @@ A collection of common utils for python.
 ## Requirements
 
 + Python >= 3.6  
-+ No non-standard library dependencies
++ colorama, dataclasses(if python==3.6), sortedcontainers
 
 ## Install
 
 ```shell
-pip install zcommons
+pip install zcommons==0.2.0
 ```

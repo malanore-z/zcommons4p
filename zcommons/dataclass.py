@@ -3,9 +3,11 @@ __all__ = [
     "asobj"
 ]
 
+
 import dataclasses
 import sys
 import typing
+
 
 _BUILTIN_BASE_TYPES = [type(None), bool, int, float, str, bytes]
 _BUILTIN_CONTAIN_TYPES = [tuple, list, set, dict]
