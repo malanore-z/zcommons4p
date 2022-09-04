@@ -10,5 +10,5 @@ A collection of common utils for python.
 ## Install
 
 ```shell
-pip install zcommons==0.2.0
+pip install zcommons==0.2.1
 ```

@@ -1,3 +1,4 @@
+import enum
 import unittest
 from dataclasses import dataclass, field
 from typing import List, Tuple
@@ -28,7 +29,7 @@ class Book:
 
 
 @dataclass()
-class Sample:
+class Sample(zc.dataclass.DataMixin):
 
     first: str
     second: str = field(init=False)
@@ -43,6 +44,39 @@ class ByteDemo:
 
     id: str
     data: bytes
+
+
+class Color(enum.Enum):
+
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+
+
+@dataclass()
+class ComplexDemo(zc.dataclass.DataMixin):
+
+    color: Color
+    data: bytes
+    s: str
+    i: int
+
+    def to_json_dict(self) -> dict:
+        return {
+            "color": self.color.value,
+            "data": zc.dataclass.bytes_encode(self.data, "hex"),
+            "s": self.s,
+            "i": self.i
+        }
+
+    @classmethod
+    def from_json_dict(cls, json_dict: dict) -> "ComplexDemo":
+        return ComplexDemo(
+            Color(json_dict["color"]),
+            zc.dataclass.bytes_decode(json_dict["data"], "hex"),
+            json_dict["s"],
+            json_dict["i"]
+        )
 
 
 class O2dTest(unittest.TestCase):
@@ -72,7 +106,8 @@ class O2dTest(unittest.TestCase):
     def test_no_init(self):
         s1 = Sample("first")
         s1d = zc.dataclass.asdict(s1)
-        self.assertEqual(s1d, {"first": "first", "second": "second", "third": "third"})
+        self.assertDictEqual(s1d, {"first": "first", "second": "second", "third": "third"})
+        self.assertDictEqual(s1d, s1.to_json_dict())
         s1.first = "first-1"
         s1.second = "second-1"
         s1.third = "third-1"
@@ -94,3 +129,14 @@ class O2dTest(unittest.TestCase):
         self.assertEqual(cd, {"name": "first", "npages": None, "nwords": None})
         c_rec = zc.dataclass.asobj(Chapter, cd)
         self.assertEqual(c, c_rec)
+
+    def test_complex(self):
+        c1 = ComplexDemo(Color.RED, b"data", "str", 1)
+        self.assertDictEqual(c1.to_json_dict(), {
+            "color": "red",
+            "data": "64617461",
+            "s": "str",
+            "i": 1
+        })
+        c2 = ComplexDemo.from_json_dict(c1.to_json_dict())
+        self.assertEqual(c1, c2)

@@ -1,10 +1,17 @@
 __all__ = [
     "asdict",
-    "asobj"
+    "asobj",
+    "DataMixin",
+    "BytesEncoderMgr",
+    "BytesEncoder",
+    "bytes_encode",
+    "bytes_decode"
 ]
 
-
+import abc
+import base64
 import dataclasses
+import json
 import sys
 import typing
 
@@ -150,3 +157,98 @@ else:
 
 def _is_typing_container(_cls):
     return _is_typing(_cls) and _origin(_cls) in _BUILTIN_CONTAIN_TYPES
+
+
+class DataMixin:
+
+    def to_json_dict(self) -> dict:
+        return asdict(self)
+
+    def to_json(self, indent=4) -> str:
+        return json.dumps(self.to_json_dict(), indent=indent)
+
+    @classmethod
+    def from_json_dict(cls, json_dict: dict) -> "DataMixin":
+        return asobj(cls, json_dict)
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "DataMixin":
+        json_dict = json.loads(json_str)
+        return asobj(cls, json_dict)
+
+
+class BytesEncoder:
+
+    @abc.abstractmethod
+    def encode(self, b: bytes):
+        pass
+
+    @abc.abstractmethod
+    def decode(self, s) -> bytes:
+        pass
+
+
+class BytesEncoderMgr:
+
+    __bytes_encoders = {}
+
+    @classmethod
+    def add_encoder(cls, encoding, encoder):
+        if encoding in cls.__bytes_encoders:
+            raise ValueError(f"{encoding} already exists.")
+        if not isinstance(encoder, BytesEncoder):
+            raise ValueError(f"encoder must be an instance of BytesEncoder's subclass")
+        cls.__bytes_encoders[encoding] = encoder
+
+    @classmethod
+    def del_encoder(cls, encoding):
+        if encoding in cls.__bytes_encoders:
+            del cls.__bytes_encoders[encoding]
+
+    @classmethod
+    def get_encoder(cls, encoding):
+        if encoding not in cls.__bytes_encoders:
+            raise ValueError(f"{encoding} not be registered")
+        return cls.__bytes_encoders[encoding]
+
+    @classmethod
+    def exists_encoder(cls, encoding):
+        return encoding in cls.__bytes_encoders
+
+    @classmethod
+    def encodings(cls):
+        return list(cls.__bytes_encoders.keys())
+
+
+class _HexEncoder(BytesEncoder):
+
+    def encode(self, b: bytes):
+        return b.hex()
+
+    def decode(self, s) -> bytes:
+        return bytes.fromhex(s)
+
+
+class _Base64Encoder(BytesEncoder):
+
+    def encode(self, b: bytes):
+        return base64.b64encode(b).decode("ascii")
+
+    def decode(self, s) -> bytes:
+        return base64.b64decode(s)
+
+
+BytesEncoderMgr.add_encoder("hex", _HexEncoder())
+BytesEncoderMgr.add_encoder("base64", _Base64Encoder())
+
+
+def bytes_encode(b: bytes, encoding: str = "base64"):
+    encoder = BytesEncoderMgr.get_encoder(encoding)
+    return encoder.encode(b)
+
+
+def bytes_decode(s, encoding: str = "base64"):
+    encoder = BytesEncoderMgr.get_encoder(encoding)
+    return encoder.decode(s)
+
+

@@ -10,5 +10,5 @@ Python常用工具集合
 ## 安装
 
 ```shell
-pip install zcommons==0.2.0
+pip install zcommons==0.2.1
 ```
